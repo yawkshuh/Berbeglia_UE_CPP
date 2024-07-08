@@ -9,6 +9,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "FunctionLibrary.h"
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -86,8 +87,9 @@ void ATEST_CPPCharacter::SetupPlayerInputComponent(class UInputComponent* Player
 		//Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ATEST_CPPCharacter::Look);
 
+		// Restart
+		EnhancedInputComponent->BindAction(RestartAction, ETriggerEvent::Completed, this, &ATEST_CPPCharacter::Restart);
 	}
-
 }
 
 void ATEST_CPPCharacter::Move(const FInputActionValue& Value)
@@ -126,6 +128,15 @@ void ATEST_CPPCharacter::Look(const FInputActionValue& Value)
 	}
 }
 
-
-
-
+void ATEST_CPPCharacter::Restart(const FInputActionValue& Value)
+{
+	bool Result = UFunctionLibrary::LoadGame(GetWorld(), "MAIN", 0);
+	if (Result)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Loading save file"))
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("No save to load!"))
+	}
+}
