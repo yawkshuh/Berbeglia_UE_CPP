@@ -54,7 +54,7 @@ private:
 	float ObjectMovementStep;
 
 private:
-	AActor* ActorBeingInteractedWith;
+	class AMovableActor* ActorBeingInteractedWith;
 	bool bIsInteracting;
 
 public:

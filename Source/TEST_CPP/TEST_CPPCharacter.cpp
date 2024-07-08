@@ -4,13 +4,15 @@
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
-#include "Components/ArrowComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "FunctionLibrary.h"
+#include "MovableActor.h"
+#include "MovableActor.h"
+#include "Components/BoxComponent.h"
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -130,6 +132,13 @@ void ATEST_CPPCharacter::Look(const FInputActionValue& Value)
 		// add yaw and pitch input to controller
 		AddControllerYawInput(LookAxisVector.X);
 		AddControllerPitchInput(LookAxisVector.Y);
+
+		if (bIsInteracting)
+		{
+			float DistanceBetweenPlayerAndActor = (GetActorLocation() - ActorBeingInteractedWith->GetActorLocation()).Length();
+			FVector UpdatedLocation = GetActorLocation() + (FollowCamera->GetForwardVector() * DistanceBetweenPlayerAndActor);
+			ActorBeingInteractedWith->SetActorLocation(UpdatedLocation);
+		}
 	}
 }
 
@@ -150,6 +159,7 @@ void ATEST_CPPCharacter::ToggleInteraction(const FInputActionValue& Value)
 {
 	if (bIsInteracting)
 	{
+		ActorBeingInteractedWith->EnablePhysics();
 		ActorBeingInteractedWith = nullptr;
 		bIsInteracting = false;
 		return;
@@ -165,17 +175,18 @@ void ATEST_CPPCharacter::ToggleInteraction(const FInputActionValue& Value)
 	GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, CollisionParams);
 	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 1, 0, 1);
 
-	AActor* HitActor = HitResult.GetActor();
-
-	if (HitActor)
+	if (AActor* HitActor = HitResult.GetActor())
 	{
-		if (HitActor->ActorHasTag("Interactable"))
+		if (HitActor->ActorHasTag("Movable"))
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Interacting with %s"), *HitActor->GetName())
-
-			bIsInteracting = true;
-			ActorBeingInteractedWith = HitActor;
-			ActorBeingInteractedWith->SetActorRotation(GetActorRotation());
+			ActorBeingInteractedWith = Cast<AMovableActor>(HitActor);
+			if (ActorBeingInteractedWith)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Interacting with %s"), *HitActor->GetName())
+				ActorBeingInteractedWith->DisablePhysics();
+				ActorBeingInteractedWith->SetActorRotation(GetActorRotation());
+				bIsInteracting = true;
+			}
 		}
 	}
 }
