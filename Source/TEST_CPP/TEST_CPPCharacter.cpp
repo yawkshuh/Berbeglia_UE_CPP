@@ -4,6 +4,7 @@
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
+#include "Components/ArrowComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -11,15 +12,9 @@
 #include "EnhancedInputSubsystems.h"
 #include "FunctionLibrary.h"
 #include "MovableActor.h"
-#include "MovableActor.h"
-#include "Components/BoxComponent.h"
-
-
-//////////////////////////////////////////////////////////////////////////
-// ATEST_CPPCharacter
 
 ATEST_CPPCharacter::ATEST_CPPCharacter()
-	: InteractionDistance{ 1500.0f }, ObjectMovementStep{50.0f}
+	: InteractionDistance{ 1500.0f }, ObjectMovementStep{50.0f}, MaxPushDistance{150.0f}
 {
 	PrimaryActorTick.bCanEverTick = false;
 
@@ -92,10 +87,11 @@ void ATEST_CPPCharacter::SetupPlayerInputComponent(class UInputComponent* Player
 		EnhancedInputComponent->BindAction(RestartAction, ETriggerEvent::Completed, this, &ATEST_CPPCharacter::Restart);
 
 		// Interaction
-		EnhancedInputComponent->BindAction(InteractionAction, ETriggerEvent::Completed, this, &ATEST_CPPCharacter::ToggleInteraction);
+		EnhancedInputComponent->BindAction(ToggleTelekinesisAction, ETriggerEvent::Completed, this, &ATEST_CPPCharacter::ToggleTelekinesis);
+		EnhancedInputComponent->BindAction(TogglePushPullAction, ETriggerEvent::Completed, this, &ATEST_CPPCharacter::TogglePushPull);
 
 		// Object movement
-		EnhancedInputComponent->BindAction(MoveObjectCloserOrFurtherAction, ETriggerEvent::Triggered, this, &ATEST_CPPCharacter::MoveObjectCloserOrFurther);
+		EnhancedInputComponent->BindAction(MoveWithTelekinesisAction, ETriggerEvent::Triggered, this, &ATEST_CPPCharacter::MoveObjectWithTelekinesis);
 	}
 }
 
@@ -106,26 +102,29 @@ void ATEST_CPPCharacter::Move(const FInputActionValue& Value)
 
 	if (Controller != nullptr)
 	{
-		// find out which way is forward
-		const FRotator Rotation = Controller->GetControlRotation();
-		const FRotator YawRotation(0, Rotation.Yaw, 0);
+		// @Cleanup: Replace with custom movement mode.
+		if (CurrentInteraction == EInteractionType::PUSHING)
+		{
+			AddMovementInput(PushDirection, MovementVector.Y);
+		}
+		else
+		{
+			const FRotator Rotation = Controller->GetControlRotation();
+			const FRotator YawRotation(0, Rotation.Yaw, 0);
 
-		// get forward vector
-		const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+			const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+			const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
-		// get right vector 
-		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-
-		// add movement 
-		AddMovementInput(ForwardDirection, MovementVector.Y);
-		AddMovementInput(RightDirection, MovementVector.X);
+			AddMovementInput(ForwardDirection, MovementVector.Y);
+			AddMovementInput(RightDirection, MovementVector.X);
+		}
 	}
 }
 
 void ATEST_CPPCharacter::Look(const FInputActionValue& Value)
 {
 	// input is a Vector2D
-	FVector2D LookAxisVector = Value.Get<FVector2D>();
+	const FVector2D LookAxisVector = Value.Get<FVector2D>();
 
 	if (Controller != nullptr)
 	{
@@ -133,10 +132,10 @@ void ATEST_CPPCharacter::Look(const FInputActionValue& Value)
 		AddControllerYawInput(LookAxisVector.X);
 		AddControllerPitchInput(LookAxisVector.Y);
 
-		if (bIsInteracting)
+		if (CurrentInteraction == EInteractionType::TELEKINESIS)
 		{
-			float DistanceBetweenPlayerAndActor = (GetActorLocation() - ActorBeingInteractedWith->GetActorLocation()).Length();
-			FVector UpdatedLocation = GetActorLocation() + (FollowCamera->GetForwardVector() * DistanceBetweenPlayerAndActor);
+			const float DistanceBetweenPlayerAndActor = (GetActorLocation() - ActorBeingInteractedWith->GetActorLocation()).Length();
+			const FVector UpdatedLocation = GetActorLocation() + (FollowCamera->GetForwardVector() * DistanceBetweenPlayerAndActor);
 			ActorBeingInteractedWith->SetActorLocation(UpdatedLocation);
 		}
 	}
@@ -144,7 +143,7 @@ void ATEST_CPPCharacter::Look(const FInputActionValue& Value)
 
 void ATEST_CPPCharacter::Restart(const FInputActionValue& Value)
 {
-	bool Result = UFunctionLibrary::LoadGame(GetWorld(), "MAIN", 0);
+	const bool Result = UFunctionLibrary::LoadGame(GetWorld(), "MAIN", 0);
 	if (Result)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Loading save file"))
@@ -155,13 +154,13 @@ void ATEST_CPPCharacter::Restart(const FInputActionValue& Value)
 	}
 }
 
-void ATEST_CPPCharacter::ToggleInteraction(const FInputActionValue& Value)
+void ATEST_CPPCharacter::ToggleTelekinesis(const FInputActionValue& Value)
 {
-	if (bIsInteracting)
+	if (CurrentInteraction == EInteractionType::TELEKINESIS)
 	{
 		ActorBeingInteractedWith->EnablePhysics();
 		ActorBeingInteractedWith = nullptr;
-		bIsInteracting = false;
+		CurrentInteraction = EInteractionType::NONE;
 		return;
 	}
 
@@ -179,27 +178,68 @@ void ATEST_CPPCharacter::ToggleInteraction(const FInputActionValue& Value)
 	{
 		if (HitActor->ActorHasTag("Movable"))
 		{
-			ActorBeingInteractedWith = Cast<AMovableActor>(HitActor);
-			if (ActorBeingInteractedWith)
-			{
-				UE_LOG(LogTemp, Warning, TEXT("Interacting with %s"), *HitActor->GetName())
-				ActorBeingInteractedWith->DisablePhysics();
-				ActorBeingInteractedWith->SetActorRotation(GetActorRotation());
-				bIsInteracting = true;
-			}
+			UE_LOG(LogTemp, Warning, TEXT("Interacting with %s"), *HitActor->GetName())
+
+			ActorBeingInteractedWith->DisablePhysics();
+			ActorBeingInteractedWith->SetActorRotation(GetActorRotation());
+			CurrentInteraction = EInteractionType::TELEKINESIS;
 		}
 	}
 }
 
-void ATEST_CPPCharacter::MoveObjectCloserOrFurther(const FInputActionValue& Value)
+void ATEST_CPPCharacter::TogglePushPull(const FInputActionValue& Value)
 {
-	if (!bIsInteracting) return;
+	if (CurrentInteraction == EInteractionType::PUSHING)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Done interacting with pushable object"))
+		ActorBeingInteractedWith = nullptr;
+		CurrentInteraction = EInteractionType::NONE;
+
+		GetCharacterMovement()->bOrientRotationToMovement = true;
+		return;
+	}
+
+	const UArrowComponent* Arrow = GetArrowComponent();
+	const FVector Start = Arrow->GetComponentLocation();
+	const FVector End = Start + Arrow->GetForwardVector() * MaxPushDistance;
+
+	FHitResult HitResult;
+	FCollisionQueryParams CollisionParams;
+	CollisionParams.AddIgnoredActor(this);
+
+	GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, CollisionParams);
+	DrawDebugLine(GetWorld(), Start, End, FColor::Blue, false, 1, 0, 1);
+
+	if (AActor* HitActor = HitResult.GetActor())
+	{
+		if (HitActor->ActorHasTag("Movable"))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Intracting with pushable actor: %s"), *HitActor->GetName());
+			CurrentInteraction = EInteractionType::PUSHING;
+
+			PushDirection = -(HitResult.Normal);
+
+			const float Distance = (HitActor->GetActorLocation() - GetActorLocation()).Length();
+			const FVector SnappedLocation = HitActor->GetActorLocation() + (HitResult.Normal * Distance);
+			
+			SetActorLocation(SnappedLocation);
+			SetActorRotation(PushDirection.Rotation());
+			
+			// Partially disable character movement.
+			GetCharacterMovement()->bOrientRotationToMovement = false;
+		}
+	}
+}
+
+void ATEST_CPPCharacter::MoveObjectWithTelekinesis(const FInputActionValue& Value)
+{
+	if (CurrentInteraction != EInteractionType::TELEKINESIS) return;
 	
-	float ScrollValue = Value.Get<float>();
+	const float ScrollValue = Value.Get<float>();
 	FVector DirectionFromActorToPlayer = GetActorLocation() - ActorBeingInteractedWith->GetActorLocation();
 	DirectionFromActorToPlayer.Z = 0.0f;
 	DirectionFromActorToPlayer.Normalize();
 
-	FVector UpdatedLocation = ActorBeingInteractedWith->GetActorLocation() + (DirectionFromActorToPlayer * ObjectMovementStep * ScrollValue);
+	const FVector UpdatedLocation = ActorBeingInteractedWith->GetActorLocation() + (DirectionFromActorToPlayer * ObjectMovementStep * ScrollValue);
 	ActorBeingInteractedWith->SetActorLocation(UpdatedLocation);
 }

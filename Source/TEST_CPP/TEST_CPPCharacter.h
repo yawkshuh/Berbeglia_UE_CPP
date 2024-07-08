@@ -8,6 +8,14 @@
 #include "TEST_CPPCharacter.generated.h"
 
 
+UENUM(Blueprintable)
+enum class EInteractionType
+{
+	NONE,
+	TELEKINESIS,
+	PUSHING
+};
+
 UCLASS(config=Game)
 class ATEST_CPPCharacter : public ACharacter
 {
@@ -40,11 +48,14 @@ private:
 	class UInputAction* RestartAction;
 
 	// Interaction inputs
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	class UInputAction* InteractionAction;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input | Telekinesis", meta = (AllowPrivateAccess = "true"))
+	class UInputAction* ToggleTelekinesisAction;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	class UInputAction* MoveObjectCloserOrFurtherAction;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input | Telekinesis", meta = (AllowPrivateAccess = "true"))
+	class UInputAction* MoveWithTelekinesisAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input | Pushing", meta = (AllowPrivateAccess = "true"))
+	class UInputAction* TogglePushPullAction;
 
 	// Telekinesis
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movable Objects", meta = (AllowPrivateAccess = "true"))
@@ -53,10 +64,17 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movable Objects", meta = (AllowPrivateAccess = "true"))
 	float ObjectMovementStep;
 
+	// Object pushing
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movable Objects", meta = (AllowPrivateAccess = "true"))
+	float MaxPushDistance;
+
 private:
 	class AMovableActor* ActorBeingInteractedWith;
-	bool bIsInteracting;
+	EInteractionType CurrentInteraction;
 
+	// Direction we're pushing towards using the normal from the line trace hit.
+	FVector PushDirection;
+	
 public:
 	ATEST_CPPCharacter();
 
@@ -66,8 +84,9 @@ protected:
 
 	void Restart(const FInputActionValue& Value);
 
-	void ToggleInteraction(const FInputActionValue& Value);
-	void MoveObjectCloserOrFurther(const FInputActionValue& Value);
+	void ToggleTelekinesis(const FInputActionValue& Value);
+	void TogglePushPull(const FInputActionValue& Value);
+	void MoveObjectWithTelekinesis(const FInputActionValue& Value);
 
 protected:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
