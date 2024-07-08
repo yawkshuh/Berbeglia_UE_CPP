@@ -4,6 +4,7 @@
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
+#include "Components/ArrowComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -16,12 +17,13 @@
 // ATEST_CPPCharacter
 
 ATEST_CPPCharacter::ATEST_CPPCharacter()
+	: InteractionDistance{ 1500.0f }, ObjectMovementStep{50.0f}
 {
 	PrimaryActorTick.bCanEverTick = false;
 
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
-		
+
 	// Don't rotate when the controller rotates. Let that just affect the camera.
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
@@ -49,9 +51,6 @@ ATEST_CPPCharacter::ATEST_CPPCharacter()
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
-
-	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
-	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 }
 
 void ATEST_CPPCharacter::BeginPlay()
@@ -76,7 +75,7 @@ void ATEST_CPPCharacter::SetupPlayerInputComponent(class UInputComponent* Player
 {
 	// Set up action bindings
 	if (UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(PlayerInputComponent)) {
-		
+
 		//Jumping
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ACharacter::Jump);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
@@ -89,6 +88,12 @@ void ATEST_CPPCharacter::SetupPlayerInputComponent(class UInputComponent* Player
 
 		// Restart
 		EnhancedInputComponent->BindAction(RestartAction, ETriggerEvent::Completed, this, &ATEST_CPPCharacter::Restart);
+
+		// Interaction
+		EnhancedInputComponent->BindAction(InteractionAction, ETriggerEvent::Completed, this, &ATEST_CPPCharacter::ToggleInteraction);
+
+		// Object movement
+		EnhancedInputComponent->BindAction(MoveObjectCloserOrFurtherAction, ETriggerEvent::Triggered, this, &ATEST_CPPCharacter::MoveObjectCloserOrFurther);
 	}
 }
 
@@ -105,7 +110,7 @@ void ATEST_CPPCharacter::Move(const FInputActionValue& Value)
 
 		// get forward vector
 		const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-	
+
 		// get right vector 
 		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
@@ -139,4 +144,51 @@ void ATEST_CPPCharacter::Restart(const FInputActionValue& Value)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("No save to load!"))
 	}
+}
+
+void ATEST_CPPCharacter::ToggleInteraction(const FInputActionValue& Value)
+{
+	if (bIsInteracting)
+	{
+		ActorBeingInteractedWith = nullptr;
+		bIsInteracting = false;
+		return;
+	}
+
+	FVector Start = FollowCamera->GetComponentLocation();
+	FVector End = Start + FollowCamera->GetForwardVector() * InteractionDistance;
+
+	FHitResult HitResult;
+	FCollisionQueryParams CollisionParams;
+	CollisionParams.AddIgnoredActor(this);
+
+	GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, CollisionParams);
+	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 1, 0, 1);
+
+	AActor* HitActor = HitResult.GetActor();
+
+	if (HitActor)
+	{
+		if (HitActor->ActorHasTag("Interactable"))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Interacting with %s"), *HitActor->GetName())
+
+			bIsInteracting = true;
+			ActorBeingInteractedWith = HitActor;
+			ActorBeingInteractedWith->SetActorRotation(GetActorRotation());
+		}
+	}
+}
+
+void ATEST_CPPCharacter::MoveObjectCloserOrFurther(const FInputActionValue& Value)
+{
+	if (!bIsInteracting) return;
+	
+	float ScrollValue = Value.Get<float>();
+	FVector DirectionFromActorToPlayer = GetActorLocation() - ActorBeingInteractedWith->GetActorLocation();
+	DirectionFromActorToPlayer.Z = 0.0f;
+	DirectionFromActorToPlayer.Normalize();
+
+	FVector UpdatedLocation = ActorBeingInteractedWith->GetActorLocation() + (DirectionFromActorToPlayer * ObjectMovementStep * ScrollValue);
+	ActorBeingInteractedWith->SetActorLocation(UpdatedLocation);
 }
