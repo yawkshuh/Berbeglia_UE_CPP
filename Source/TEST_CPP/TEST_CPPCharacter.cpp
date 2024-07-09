@@ -171,6 +171,8 @@ void ATEST_CPPCharacter::ToggleTelekinesis(const FInputActionValue& Value)
 		return;
 	}
 
+	if (CurrentInteraction != EInteractionMode::None) return;
+	
 	FVector Start = FollowCamera->GetComponentLocation();
 	FVector End = Start + FollowCamera->GetForwardVector() * InteractionDistance;
 
@@ -207,7 +209,9 @@ void ATEST_CPPCharacter::TogglePushPull(const FInputActionValue& Value)
 		CurrentInteraction = EInteractionMode::None;
 		return;
 	}
-
+	
+	if (CurrentInteraction != EInteractionMode::None) return;
+	
 	const UArrowComponent* Arrow = GetArrowComponent();
 	const FVector Start = Arrow->GetComponentLocation();
 	const FVector End = Start + Arrow->GetForwardVector() * MaxPushDistance;
