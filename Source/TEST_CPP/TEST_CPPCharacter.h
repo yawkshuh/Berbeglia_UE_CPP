@@ -5,16 +5,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
+#include "InteractionMode.h"
 #include "TEST_CPPCharacter.generated.h"
-
-
-UENUM(Blueprintable)
-enum class EInteractionType
-{
-	NONE,
-	TELEKINESIS,
-	PUSHING
-};
 
 UCLASS(config=Game)
 class ATEST_CPPCharacter : public ACharacter
@@ -70,19 +62,29 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movable Objects", meta = (AllowPrivateAccess = "true"))
 	float ObjectOffsetWhileBeingPushed;
+
+	// Actor we're currently interacting with, or nullptr if we're not interacting.
+	UPROPERTY()
+	class AMovableActor* InteractedActor;
 	
 private:
-	class AMovableActor* ActorBeingInteractedWith;
-	EInteractionType CurrentInteraction;
+	// Interaction mode we're in, if any.
+	EInteractionMode CurrentInteraction;
 
 	// Direction we're pushing towards using the normal from the line trace hit.
 	FVector PushDirection;
+
+	// Distance from the object when we begin the interaction. 
 	float InitialDistance;
 	
 public:
 	ATEST_CPPCharacter();
 
 protected:
+	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	virtual void BeginPlay() override;
+	
+private:
 	void Move(const FInputActionValue& Value);
 	void Look(const FInputActionValue& Value);
 
@@ -91,10 +93,6 @@ protected:
 	void ToggleTelekinesis(const FInputActionValue& Value);
 	void TogglePushPull(const FInputActionValue& Value);
 	void MoveObjectWithTelekinesis(const FInputActionValue& Value);
-
-protected:
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	virtual void BeginPlay();
 
 public:
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "InteractionMode.h"
 #include "MovableActor.generated.h"
 
 UCLASS()
@@ -18,15 +19,22 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Mesh, meta = (AllowPrivateAccess = "true"))
 	class UStaticMeshComponent* MeshComponent;
 
+private:
+	EInteractionMode InteractionMode;
+	
 public:	
 	AMovableActor();
 	
 protected:
 	virtual void BeginPlay() override;
 
-public:
+private:
 	void EnablePhysics() const;
 	void DisablePhysics() const;
+
+public:
+	void BeginInteraction(const EInteractionMode Mode);
+	void EndInteraction();
 
 	FORCEINLINE UBoxComponent* GetBoxComponent() const { return BoxComponent; }
 	FORCEINLINE UStaticMeshComponent* GetMeshComponent() const { return MeshComponent; }

@@ -16,7 +16,7 @@
 ATEST_CPPCharacter::ATEST_CPPCharacter()
 	: InteractionDistance{ 1500.0f }, ObjectMovementStep{50.0f},
 	  MaxPushDistance{150.0f}, ObjectOffsetWhileBeingPushed{20.0f},
-	  CurrentInteraction{EInteractionType::NONE}
+	  CurrentInteraction{EInteractionMode::None}
 {
 	PrimaryActorTick.bCanEverTick = false;
 
@@ -104,8 +104,7 @@ void ATEST_CPPCharacter::Move(const FInputActionValue& Value)
 
 	if (Controller != nullptr)
 	{
-		// @Cleanup: Replace with custom movement mode.
-		if (CurrentInteraction == EInteractionType::PUSHING)
+		if (CurrentInteraction == EInteractionMode::Push)
 		{
 			FVector DirectionFromPlayerToObject = PushDirection;
 			DirectionFromPlayerToObject.Z = 0.0f;
@@ -113,19 +112,18 @@ void ATEST_CPPCharacter::Move(const FInputActionValue& Value)
 			const FVector UpdatedLocation = GetActorLocation() + (DirectionFromPlayerToObject * (InitialDistance + ObjectOffsetWhileBeingPushed));
 
 			AddMovementInput(PushDirection, MovementVector.Y);
-			ActorBeingInteractedWith->SetActorLocation(UpdatedLocation);
+			InteractedActor->SetActorLocation(UpdatedLocation);
+			return;
 		}
-		else
-		{
-			const FRotator Rotation = Controller->GetControlRotation();
-			const FRotator YawRotation(0, Rotation.Yaw, 0);
+		
+		const FRotator Rotation = Controller->GetControlRotation();
+		const FRotator YawRotation(0, Rotation.Yaw, 0);
 
-			const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-			const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+		const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
-			AddMovementInput(ForwardDirection, MovementVector.Y);
-			AddMovementInput(RightDirection, MovementVector.X);
-		}
+		AddMovementInput(ForwardDirection, MovementVector.Y);
+		AddMovementInput(RightDirection, MovementVector.X);
 	}
 }
 
@@ -140,12 +138,11 @@ void ATEST_CPPCharacter::Look(const FInputActionValue& Value)
 		AddControllerYawInput(LookAxisVector.X);
 		AddControllerPitchInput(LookAxisVector.Y);
 
-		// @Cleanup: Replace with custom movement mode.
-		if (CurrentInteraction == EInteractionType::TELEKINESIS)
+		if (CurrentInteraction == EInteractionMode::Telekinesis)
 		{
-			const float DistanceBetweenPlayerAndActor = (GetActorLocation() - ActorBeingInteractedWith->GetActorLocation()).Length();
+			const float DistanceBetweenPlayerAndActor = (GetActorLocation() - InteractedActor->GetActorLocation()).Length();
 			const FVector UpdatedLocation = GetActorLocation() + (FollowCamera->GetForwardVector() * DistanceBetweenPlayerAndActor);
-			ActorBeingInteractedWith->SetActorLocation(UpdatedLocation);
+			InteractedActor->SetActorLocation(UpdatedLocation);
 		}
 	}
 }
@@ -165,11 +162,12 @@ void ATEST_CPPCharacter::Restart(const FInputActionValue& Value)
 
 void ATEST_CPPCharacter::ToggleTelekinesis(const FInputActionValue& Value)
 {
-	if (CurrentInteraction == EInteractionType::TELEKINESIS)
+	if (CurrentInteraction == EInteractionMode::Telekinesis)
 	{
-		ActorBeingInteractedWith->EnablePhysics();
-		ActorBeingInteractedWith = nullptr;
-		CurrentInteraction = EInteractionType::NONE;
+		InteractedActor->EndInteraction();
+		InteractedActor = nullptr;
+		
+		CurrentInteraction = EInteractionMode::None;
 		return;
 	}
 
@@ -189,26 +187,24 @@ void ATEST_CPPCharacter::ToggleTelekinesis(const FInputActionValue& Value)
 	if (HitActor == nullptr) return;
 	if (!HitActor->ActorHasTag("Movable")) return;
 
-	ActorBeingInteractedWith = Cast<AMovableActor>(HitActor);
-	if (ActorBeingInteractedWith == nullptr) return;
+	InteractedActor = Cast<AMovableActor>(HitActor);
+	if (InteractedActor == nullptr) return;
 
 	// Telekinesis interaction.
 	UE_LOG(LogTemp, Warning, TEXT("Interacting with %s"), *HitActor->GetName())
 
-	ActorBeingInteractedWith->DisablePhysics();
-	ActorBeingInteractedWith->SetActorRotation(GetActorRotation());
-	CurrentInteraction = EInteractionType::TELEKINESIS;
+	InteractedActor->BeginInteraction(EInteractionMode::Telekinesis);
+	CurrentInteraction = EInteractionMode::Telekinesis;
 }
 
 void ATEST_CPPCharacter::TogglePushPull(const FInputActionValue& Value)
 {
-	if (CurrentInteraction == EInteractionType::PUSHING)
+	if (CurrentInteraction == EInteractionMode::Push)
 	{
-		ActorBeingInteractedWith->EnablePhysics();
-		ActorBeingInteractedWith = nullptr;
+		InteractedActor->EndInteraction();
+		InteractedActor = nullptr;
 
-		CurrentInteraction = EInteractionType::NONE;
-		GetCharacterMovement()->bOrientRotationToMovement = true;
+		CurrentInteraction = EInteractionMode::None;
 		return;
 	}
 
@@ -227,13 +223,13 @@ void ATEST_CPPCharacter::TogglePushPull(const FInputActionValue& Value)
 	if (HitActor == nullptr) return;
 	if (!HitActor->ActorHasTag("Movable")) return;
 
-	ActorBeingInteractedWith = Cast<AMovableActor>(HitActor);
-	if (ActorBeingInteractedWith == nullptr) return;
+	InteractedActor = Cast<AMovableActor>(HitActor);
+	if (InteractedActor == nullptr) return;
 
 	// Interaction with a pushable actor.
 	UE_LOG(LogTemp, Warning, TEXT("Intracting with pushable actor: %s"), *HitActor->GetName());
 
-	CurrentInteraction = EInteractionType::PUSHING;
+	CurrentInteraction = EInteractionMode::Push;
 	PushDirection = -(HitResult.Normal);
 
 	InitialDistance = (HitActor->GetActorLocation() - GetActorLocation()).Length();
@@ -242,20 +238,18 @@ void ATEST_CPPCharacter::TogglePushPull(const FInputActionValue& Value)
 	SetActorLocation(SnappedLocation);
 	SetActorRotation(PushDirection.Rotation());
 			
-	// Partially disable character movement.
-	ActorBeingInteractedWith->DisablePhysics();
-	GetCharacterMovement()->bOrientRotationToMovement = false;
+	InteractedActor->BeginInteraction(EInteractionMode::Push);
 }
 
 void ATEST_CPPCharacter::MoveObjectWithTelekinesis(const FInputActionValue& Value)
 {
-	if (CurrentInteraction != EInteractionType::TELEKINESIS) return;
+	if (CurrentInteraction != EInteractionMode::Telekinesis) return;
 	
 	const float ScrollValue = Value.Get<float>();
-	FVector DirectionFromActorToPlayer = GetActorLocation() - ActorBeingInteractedWith->GetActorLocation();
+	FVector DirectionFromActorToPlayer = GetActorLocation() - InteractedActor->GetActorLocation();
 	DirectionFromActorToPlayer.Z = 0.0f;
 	DirectionFromActorToPlayer.Normalize();
 
-	const FVector UpdatedLocation = ActorBeingInteractedWith->GetActorLocation() + (DirectionFromActorToPlayer * ObjectMovementStep * ScrollValue);
-	ActorBeingInteractedWith->SetActorLocation(UpdatedLocation);
+	const FVector UpdatedLocation = InteractedActor->GetActorLocation() + (DirectionFromActorToPlayer * ObjectMovementStep * ScrollValue);
+	InteractedActor->SetActorLocation(UpdatedLocation);
 }
