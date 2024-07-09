@@ -14,7 +14,9 @@
 #include "MovableActor.h"
 
 ATEST_CPPCharacter::ATEST_CPPCharacter()
-	: InteractionDistance{ 1500.0f }, ObjectMovementStep{50.0f}, MaxPushDistance{150.0f}
+	: InteractionDistance{ 1500.0f }, ObjectMovementStep{50.0f},
+	  MaxPushDistance{150.0f}, ObjectOffsetWhileBeingPushed{20.0f},
+	  CurrentInteraction{EInteractionType::NONE}
 {
 	PrimaryActorTick.bCanEverTick = false;
 
@@ -105,7 +107,13 @@ void ATEST_CPPCharacter::Move(const FInputActionValue& Value)
 		// @Cleanup: Replace with custom movement mode.
 		if (CurrentInteraction == EInteractionType::PUSHING)
 		{
+			FVector DirectionFromPlayerToObject = PushDirection;
+			DirectionFromPlayerToObject.Z = 0.0f;
+
+			const FVector UpdatedLocation = GetActorLocation() + (DirectionFromPlayerToObject * (InitialDistance + ObjectOffsetWhileBeingPushed));
+
 			AddMovementInput(PushDirection, MovementVector.Y);
+			ActorBeingInteractedWith->SetActorLocation(UpdatedLocation);
 		}
 		else
 		{
@@ -132,6 +140,7 @@ void ATEST_CPPCharacter::Look(const FInputActionValue& Value)
 		AddControllerYawInput(LookAxisVector.X);
 		AddControllerPitchInput(LookAxisVector.Y);
 
+		// @Cleanup: Replace with custom movement mode.
 		if (CurrentInteraction == EInteractionType::TELEKINESIS)
 		{
 			const float DistanceBetweenPlayerAndActor = (GetActorLocation() - ActorBeingInteractedWith->GetActorLocation()).Length();
@@ -174,27 +183,31 @@ void ATEST_CPPCharacter::ToggleTelekinesis(const FInputActionValue& Value)
 	GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, CollisionParams);
 	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 1, 0, 1);
 
-	if (AActor* HitActor = HitResult.GetActor())
-	{
-		if (HitActor->ActorHasTag("Movable"))
-		{
-			UE_LOG(LogTemp, Warning, TEXT("Interacting with %s"), *HitActor->GetName())
+	UE_LOG(LogTemp, Warning, TEXT("We get thus far!"))
+	
+	AActor* HitActor = HitResult.GetActor();
+	if (HitActor == nullptr) return;
+	if (!HitActor->ActorHasTag("Movable")) return;
 
-			ActorBeingInteractedWith->DisablePhysics();
-			ActorBeingInteractedWith->SetActorRotation(GetActorRotation());
-			CurrentInteraction = EInteractionType::TELEKINESIS;
-		}
-	}
+	ActorBeingInteractedWith = Cast<AMovableActor>(HitActor);
+	if (ActorBeingInteractedWith == nullptr) return;
+
+	// Telekinesis interaction.
+	UE_LOG(LogTemp, Warning, TEXT("Interacting with %s"), *HitActor->GetName())
+
+	ActorBeingInteractedWith->DisablePhysics();
+	ActorBeingInteractedWith->SetActorRotation(GetActorRotation());
+	CurrentInteraction = EInteractionType::TELEKINESIS;
 }
 
 void ATEST_CPPCharacter::TogglePushPull(const FInputActionValue& Value)
 {
 	if (CurrentInteraction == EInteractionType::PUSHING)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Done interacting with pushable object"))
+		ActorBeingInteractedWith->EnablePhysics();
 		ActorBeingInteractedWith = nullptr;
-		CurrentInteraction = EInteractionType::NONE;
 
+		CurrentInteraction = EInteractionType::NONE;
 		GetCharacterMovement()->bOrientRotationToMovement = true;
 		return;
 	}
@@ -210,25 +223,28 @@ void ATEST_CPPCharacter::TogglePushPull(const FInputActionValue& Value)
 	GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, CollisionParams);
 	DrawDebugLine(GetWorld(), Start, End, FColor::Blue, false, 1, 0, 1);
 
-	if (AActor* HitActor = HitResult.GetActor())
-	{
-		if (HitActor->ActorHasTag("Movable"))
-		{
-			UE_LOG(LogTemp, Warning, TEXT("Intracting with pushable actor: %s"), *HitActor->GetName());
-			CurrentInteraction = EInteractionType::PUSHING;
+	AActor* HitActor = HitResult.GetActor();
+	if (HitActor == nullptr) return;
+	if (!HitActor->ActorHasTag("Movable")) return;
 
-			PushDirection = -(HitResult.Normal);
+	ActorBeingInteractedWith = Cast<AMovableActor>(HitActor);
+	if (ActorBeingInteractedWith == nullptr) return;
 
-			const float Distance = (HitActor->GetActorLocation() - GetActorLocation()).Length();
-			const FVector SnappedLocation = HitActor->GetActorLocation() + (HitResult.Normal * Distance);
+	// Interaction with a pushable actor.
+	UE_LOG(LogTemp, Warning, TEXT("Intracting with pushable actor: %s"), *HitActor->GetName());
+
+	CurrentInteraction = EInteractionType::PUSHING;
+	PushDirection = -(HitResult.Normal);
+
+	InitialDistance = (HitActor->GetActorLocation() - GetActorLocation()).Length();
+	const FVector SnappedLocation = HitActor->GetActorLocation() + (HitResult.Normal * InitialDistance);
 			
-			SetActorLocation(SnappedLocation);
-			SetActorRotation(PushDirection.Rotation());
+	SetActorLocation(SnappedLocation);
+	SetActorRotation(PushDirection.Rotation());
 			
-			// Partially disable character movement.
-			GetCharacterMovement()->bOrientRotationToMovement = false;
-		}
-	}
+	// Partially disable character movement.
+	ActorBeingInteractedWith->DisablePhysics();
+	GetCharacterMovement()->bOrientRotationToMovement = false;
 }
 
 void ATEST_CPPCharacter::MoveObjectWithTelekinesis(const FInputActionValue& Value)

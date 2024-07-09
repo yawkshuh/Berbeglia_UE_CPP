@@ -68,12 +68,16 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movable Objects", meta = (AllowPrivateAccess = "true"))
 	float MaxPushDistance;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movable Objects", meta = (AllowPrivateAccess = "true"))
+	float ObjectOffsetWhileBeingPushed;
+	
 private:
 	class AMovableActor* ActorBeingInteractedWith;
 	EInteractionType CurrentInteraction;
 
 	// Direction we're pushing towards using the normal from the line trace hit.
 	FVector PushDirection;
+	float InitialDistance;
 	
 public:
 	ATEST_CPPCharacter();
