@@ -14,9 +14,9 @@
 #include "MovableActor.h"
 
 ATEST_CPPCharacter::ATEST_CPPCharacter()
-	: InteractionDistance{ 1500.0f }, ObjectMovementStep{50.0f},
-	  MaxPushDistance{150.0f}, ObjectOffsetWhileBeingPushed{20.0f},
-	  CurrentInteraction{EInteractionMode::None}
+	: InteractionDistance{ 1500.0f }, ObjectMovementStep{50.0f}
+	, MaxPushDistance{150.0f}, ObjectOffsetWhileBeingPushed{20.0f}
+	, CurrentInteraction{EInteractionMode::None}
 {
 	PrimaryActorTick.bCanEverTick = false;
 

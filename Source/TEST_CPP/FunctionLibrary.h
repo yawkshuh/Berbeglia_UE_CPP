@@ -17,4 +17,12 @@ public:
 	UFUNCTION(BlueprintCallable)
 	static bool LoadGame(UWorld* World, FString SlotName, int32 UserIndex);
 #pragma endregion
+
+#pragma region "Dynamic Materials"
+	UFUNCTION(BlueprintCallable)
+	static void BindDynamicMaterialInstance(UStaticMeshComponent* Mesh, UMaterialInstanceDynamic* MaterialInstance, FName ParameterName, FColor Color);
+
+	UFUNCTION(BlueprintCallable)
+	static void SetDynamicMaterialInstanceParameter(UMaterialInstanceDynamic* MaterialInstance, FName ParameterName, FColor Color);
+#pragma endregion
 };

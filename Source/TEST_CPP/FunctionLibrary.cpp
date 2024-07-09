@@ -41,3 +41,23 @@ bool UFunctionLibrary::LoadGame(UWorld* World, FString SlotName, int32 UserIndex
 
 	return false;
 }
+
+void UFunctionLibrary::BindDynamicMaterialInstance(UStaticMeshComponent* Mesh, UMaterialInstanceDynamic* MaterialInstance, FName ParameterName, FColor Color)
+{
+	if (MaterialInstance != nullptr)
+	{
+		if (Mesh->GetMaterial(0))
+		{
+			Mesh->SetMaterial(0, MaterialInstance);
+			MaterialInstance->SetVectorParameterValue(ParameterName, Color);
+		}	
+	}
+}
+
+void UFunctionLibrary::SetDynamicMaterialInstanceParameter(UMaterialInstanceDynamic* MaterialInstance, FName ParameterName, FColor Color)
+{
+	if (MaterialInstance != nullptr)
+	{
+		MaterialInstance->SetVectorParameterValue(ParameterName, Color);
+	}
+}

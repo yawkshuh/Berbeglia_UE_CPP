@@ -5,9 +5,11 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "FunctionLibrary.h"
 
 AMovableActor::AMovableActor()
-	: InteractionMode{EInteractionMode::None}
+	: DefaultColor{FColor::Cyan}, TelekinesisColor{FColor::Purple}, PushColor{FColor::Orange}
+	,InteractionMode{EInteractionMode::None}
 {
 	PrimaryActorTick.bCanEverTick = false;
 
@@ -26,7 +28,12 @@ AMovableActor::AMovableActor()
 void AMovableActor::BeginPlay()
 {
 	Super::BeginPlay();
-	EnablePhysics();	
+
+	UMaterial* BaseMaterial = LoadObject<UMaterial>(nullptr, TEXT("/Game/ThirdPerson/Materials/M_SolidParam.M_SolidParam"));
+	MaterialInstance = UMaterialInstanceDynamic::Create(BaseMaterial, MeshComponent);
+	UFunctionLibrary::BindDynamicMaterialInstance(MeshComponent, MaterialInstance, "BaseColor", DefaultColor);
+
+	EnablePhysics();
 }
 
 void AMovableActor::EnablePhysics() const
@@ -52,6 +59,7 @@ void AMovableActor::BeginInteraction(const EInteractionMode Mode)
 			DisablePhysics();
 			SetActorRotation(Player->GetActorRotation());
 			Player->GetCharacterMovement()->SetJumpAllowed(false);
+			UFunctionLibrary::SetDynamicMaterialInstanceParameter(MaterialInstance, "BaseColor", TelekinesisColor);
 			InteractionMode = Mode;
 		} break;
 
@@ -60,6 +68,7 @@ void AMovableActor::BeginInteraction(const EInteractionMode Mode)
 			DisablePhysics();
 			Player->GetCharacterMovement()->bOrientRotationToMovement = false;
 			Player->GetCharacterMovement()->SetJumpAllowed(false);
+			UFunctionLibrary::SetDynamicMaterialInstanceParameter(MaterialInstance, "BaseColor", PushColor);
 			InteractionMode = Mode;
 		} break;
 
@@ -81,6 +90,7 @@ void AMovableActor::EndInteraction()
 		{
 			EnablePhysics();
 			Player->GetCharacterMovement()->SetJumpAllowed(true);
+			UFunctionLibrary::SetDynamicMaterialInstanceParameter(MaterialInstance, "BaseColor", DefaultColor);
 			InteractionMode = EInteractionMode::None;
 		} break;
 
@@ -89,6 +99,7 @@ void AMovableActor::EndInteraction()
 			EnablePhysics();
 			Player->GetCharacterMovement()->bOrientRotationToMovement = true;
 			Player->GetCharacterMovement()->SetJumpAllowed(true);
+			UFunctionLibrary::SetDynamicMaterialInstanceParameter(MaterialInstance, "BaseColor", DefaultColor);
 			InteractionMode = EInteractionMode::None;
 		} break;
 

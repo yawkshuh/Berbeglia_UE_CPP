@@ -19,12 +19,12 @@ private:
 	class UStaticMeshComponent* MeshComponent;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Material, meta = (AllowPrivateAccess = "true"))
-	FLinearColor IdleColor;
+	FColor IdleColor;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Material, meta = (AllowPrivateAccess = "true"))
-	FLinearColor ActiveColor;
+	FColor ActiveColor;
 
-private:
+	UPROPERTY()
 	UMaterialInstanceDynamic* MaterialInstance;
 
 public:	

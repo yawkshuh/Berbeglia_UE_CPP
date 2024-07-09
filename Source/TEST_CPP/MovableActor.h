@@ -17,8 +17,20 @@ private:
 	class UBoxComponent* BoxComponent;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Mesh, meta = (AllowPrivateAccess = "true"))
-	class UStaticMeshComponent* MeshComponent;
+	UStaticMeshComponent* MeshComponent;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Material, meta = (AllowPrivateAccess = "true"))
+	FColor DefaultColor;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Material, meta = (AllowPrivateAccess = "true"))
+	FColor TelekinesisColor;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Material, meta = (AllowPrivateAccess = "true"))
+	FColor PushColor;
+
+	UPROPERTY()
+	UMaterialInstanceDynamic* MaterialInstance;
+	
 private:
 	EInteractionMode InteractionMode;
 	
