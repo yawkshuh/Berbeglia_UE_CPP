@@ -5,6 +5,7 @@
 #include "FunctionLibrary.h"
 
 ASaveTrigger::ASaveTrigger()
+	: MaxNumOfSaves{ 2 }
 {
 	PrimaryActorTick.bCanEverTick = false;
 
@@ -22,20 +23,15 @@ void ASaveTrigger::BeginPlay()
 
 void ASaveTrigger::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& Hit)
 {
-	if (bHasBeenUsed) return;
-	//TriggerGameSave();
-
-	if (!TimerHandle.IsValid())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Save Triggered..."))
-		GetWorldTimerManager().SetTimer(TimerHandle, this, &ASaveTrigger::TriggerGameSave, 3.0f, false);
-	}
+	if (TimesTriggered >= MaxNumOfSaves) return;
+	GetWorldTimerManager().SetTimer(TimerHandle, this, &ASaveTrigger::TriggerGameSave, 3.0f, false);
 }
 
 void ASaveTrigger::TriggerGameSave()
 {
-	UE_LOG(LogTemp, Warning, TEXT("SAVING..."))
+	UE_LOG(LogTemp, Warning, TEXT("Manual save.."))
 	UFunctionLibrary::SaveGame(GetWorld(), "MAIN", 0);
-	bHasBeenUsed = true;
+
 	GetWorldTimerManager().ClearTimer(TimerHandle);
+	TimesTriggered += 1;
 }

@@ -11,6 +11,13 @@ class ATEST_CPPGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
 
+private:
+	FTimerHandle TimerHandle;
+
+private:
+	virtual void BeginPlay() override;
+	void TriggerSave() const;
+
 public:
 	ATEST_CPPGameMode();
 };

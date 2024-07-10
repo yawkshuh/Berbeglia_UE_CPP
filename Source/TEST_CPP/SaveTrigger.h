@@ -15,8 +15,11 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Collision, meta = (AllowPrivateAccess = "true"))
 	class UBoxComponent* BoxComponent;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Save", meta = (AllowPrivateAccess = "true"))
+	int32 MaxNumOfSaves;
+
 private:
-	bool bHasBeenUsed;
+	int32 TimesTriggered;
 	FTimerHandle TimerHandle;
 
 public:	

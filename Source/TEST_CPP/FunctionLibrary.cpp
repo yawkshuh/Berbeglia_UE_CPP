@@ -18,6 +18,7 @@ bool UFunctionLibrary::SaveGame(UWorld* World, FString SlotName, int32 UserIndex
 			SaveGame->Player.Rotation = PlayerCharacter->GetActorRotation();
 
 			UGameplayStatics::SaveGameToSlot(SaveGame, SlotName, UserIndex);
+			UE_LOG(LogTemp, Warning, TEXT("Save written!"))
 			return true;
 		}
 	}
@@ -36,6 +37,7 @@ bool UFunctionLibrary::LoadGame(UWorld* World, FString SlotName, int32 UserIndex
 		PlayerCharacter->SetActorScale3D(LoadGame->Player.Scale);
 		PlayerCharacter->SetActorRotation(LoadGame->Player.Rotation);
 
+		UE_LOG(LogTemp, Warning, TEXT("Save loaded!"))
 		return true;
 	}
 
