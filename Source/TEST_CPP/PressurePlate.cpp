@@ -3,6 +3,9 @@
 #include "PressurePlate.h"
 #include "FunctionLibrary.h"
 #include "Components/BoxComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "TEST_CPPGameStateBase.h"
+
 
 APressurePlate::APressurePlate()
 	: IdleColor{FColor::Red}, ActiveColor{FColor::Green}, MaterialInstance{ nullptr }
@@ -33,9 +36,20 @@ void APressurePlate::BeginPlay()
 void APressurePlate::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& Hit)
 {
 	UFunctionLibrary::SetDynamicMaterialInstanceParameter(MaterialInstance, "BaseColor", ActiveColor);
+	
+	ATEST_CPPGameStateBase* GameState = Cast<ATEST_CPPGameStateBase>(GetWorld()->GetGameState());
+	if (GameState)
+	{
+		GameState->SetPlatePressed(true);
+	}
 }
 
 void APressurePlate::OnEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherBodyIndex)
 {
 	UFunctionLibrary::SetDynamicMaterialInstanceParameter(MaterialInstance, "BaseColor", IdleColor);
+	ATEST_CPPGameStateBase* GameState = Cast<ATEST_CPPGameStateBase>(GetWorld()->GetGameState());
+	if (GameState)
+	{
+		GameState->SetPlatePressed(false);
+	}
 }
