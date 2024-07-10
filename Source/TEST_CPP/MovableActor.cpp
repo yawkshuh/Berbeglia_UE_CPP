@@ -8,7 +8,7 @@
 #include "FunctionLibrary.h"
 
 AMovableActor::AMovableActor()
-	: DefaultColor{FColor::Cyan}, TelekinesisColor{FColor::Purple}, PushColor{FColor::Orange}
+	: IdleColor{FColor::White}, InteractionColor{FColor::Cyan}, TelekinesisColor{FColor::Purple}, PushColor{FColor::Orange}
 	,InteractionMode{EInteractionMode::None}
 {
 	PrimaryActorTick.bCanEverTick = false;
@@ -21,8 +21,6 @@ AMovableActor::AMovableActor()
 	// Mesh
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh Component"));
 	MeshComponent->SetupAttachment(BoxComponent);
-	
-	Tags.Add("Movable");
 }
 
 void AMovableActor::BeginPlay()
@@ -31,8 +29,14 @@ void AMovableActor::BeginPlay()
 
 	UMaterial* BaseMaterial = LoadObject<UMaterial>(nullptr, TEXT("/Game/ThirdPerson/Materials/M_SolidParam.M_SolidParam"));
 	MaterialInstance = UMaterialInstanceDynamic::Create(BaseMaterial, MeshComponent);
-	UFunctionLibrary::BindDynamicMaterialInstance(MeshComponent, MaterialInstance, "BaseColor", DefaultColor);
 
+	if (ActorHasTag("MovableByTelekinesis"))
+		UFunctionLibrary::BindDynamicMaterialInstance(MeshComponent, MaterialInstance, "BaseColor", TelekinesisColor);
+	else if (ActorHasTag("MovableByPushing"))
+		UFunctionLibrary::BindDynamicMaterialInstance(MeshComponent, MaterialInstance, "BaseColor", PushColor);
+	else
+		UFunctionLibrary::BindDynamicMaterialInstance(MeshComponent, MaterialInstance, "BaseColor", IdleColor);
+	
 	EnablePhysics();
 }
 
@@ -59,7 +63,7 @@ void AMovableActor::BeginInteraction(const EInteractionMode Mode)
 			DisablePhysics();
 			SetActorRotation(Player->GetActorRotation());
 			Player->GetCharacterMovement()->SetJumpAllowed(false);
-			UFunctionLibrary::SetDynamicMaterialInstanceParameter(MaterialInstance, "BaseColor", TelekinesisColor);
+			UFunctionLibrary::SetDynamicMaterialInstanceParameter(MaterialInstance, "BaseColor", InteractionColor);
 			InteractionMode = Mode;
 		} break;
 
@@ -68,7 +72,7 @@ void AMovableActor::BeginInteraction(const EInteractionMode Mode)
 			DisablePhysics();
 			Player->GetCharacterMovement()->bOrientRotationToMovement = false;
 			Player->GetCharacterMovement()->SetJumpAllowed(false);
-			UFunctionLibrary::SetDynamicMaterialInstanceParameter(MaterialInstance, "BaseColor", PushColor);
+			UFunctionLibrary::SetDynamicMaterialInstanceParameter(MaterialInstance, "BaseColor", InteractionColor);
 			InteractionMode = Mode;
 		} break;
 
@@ -90,7 +94,7 @@ void AMovableActor::EndInteraction()
 		{
 			EnablePhysics();
 			Player->GetCharacterMovement()->SetJumpAllowed(true);
-			UFunctionLibrary::SetDynamicMaterialInstanceParameter(MaterialInstance, "BaseColor", DefaultColor);
+			UFunctionLibrary::SetDynamicMaterialInstanceParameter(MaterialInstance, "BaseColor", TelekinesisColor);
 			InteractionMode = EInteractionMode::None;
 		} break;
 
@@ -99,7 +103,7 @@ void AMovableActor::EndInteraction()
 			EnablePhysics();
 			Player->GetCharacterMovement()->bOrientRotationToMovement = true;
 			Player->GetCharacterMovement()->SetJumpAllowed(true);
-			UFunctionLibrary::SetDynamicMaterialInstanceParameter(MaterialInstance, "BaseColor", DefaultColor);
+			UFunctionLibrary::SetDynamicMaterialInstanceParameter(MaterialInstance, "BaseColor", PushColor);
 			InteractionMode = EInteractionMode::None;
 		} break;
 

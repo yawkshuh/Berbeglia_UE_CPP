@@ -188,7 +188,7 @@ void ATEST_CPPCharacter::ToggleTelekinesis(const FInputActionValue& Value)
 	
 	AActor* HitActor = HitResult.GetActor();
 	if (HitActor == nullptr) return;
-	if (!HitActor->ActorHasTag("Movable")) return;
+	if (!HitActor->ActorHasTag("MovableByTelekinesis")) return;
 
 	InteractedActor = Cast<AMovableActor>(HitActor);
 	if (InteractedActor == nullptr) return;
@@ -226,7 +226,7 @@ void ATEST_CPPCharacter::TogglePushPull(const FInputActionValue& Value)
 
 	AActor* HitActor = HitResult.GetActor();
 	if (HitActor == nullptr) return;
-	if (!HitActor->ActorHasTag("Movable")) return;
+	if (!HitActor->ActorHasTag("MovableByPushing")) return;
 
 	InteractedActor = Cast<AMovableActor>(HitActor);
 	if (InteractedActor == nullptr) return;
