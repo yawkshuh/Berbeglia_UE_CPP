@@ -3,6 +3,7 @@
 #include "WinTrigger.h"
 #include "Components/BoxComponent.h"
 #include "TEST_CPPGameStateBase.h"
+#include "Kismet/GameplayStatics.h"
 
 AWinTrigger::AWinTrigger()
 {
@@ -19,7 +20,7 @@ void AWinTrigger::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActo
 	{
 		if (GameState->IsPlatePressed())
 		{
-			UE_LOG(LogTemp, Warning, TEXT("YOU WIN!"))
+			UGameplayStatics::OpenLevel(GetWorld(), FName("WinMap"));
 		}
 	}
 }
