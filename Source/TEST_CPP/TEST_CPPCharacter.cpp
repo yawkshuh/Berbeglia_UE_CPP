@@ -182,19 +182,13 @@ void ATEST_CPPCharacter::ToggleTelekinesis(const FInputActionValue& Value)
 	CollisionParams.AddIgnoredActor(this);
 
 	GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, CollisionParams);
-	DrawDebugLine(GetWorld(), Start, End, FColor::Green, false, 1, 0, 1);
 
-	UE_LOG(LogTemp, Warning, TEXT("We get thus far!"))
-	
 	AActor* HitActor = HitResult.GetActor();
 	if (HitActor == nullptr) return;
 	if (!HitActor->ActorHasTag("MovableByTelekinesis")) return;
 
 	InteractedActor = Cast<AMovableActor>(HitActor);
 	if (InteractedActor == nullptr) return;
-
-	// Telekinesis interaction.
-	UE_LOG(LogTemp, Warning, TEXT("Interacting with %s"), *HitActor->GetName())
 
 	InteractedActor->BeginInteraction(EInteractionMode::Telekinesis);
 	CurrentInteraction = EInteractionMode::Telekinesis;
@@ -222,7 +216,6 @@ void ATEST_CPPCharacter::TogglePushPull(const FInputActionValue& Value)
 	CollisionParams.AddIgnoredActor(this);
 
 	GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, CollisionParams);
-	DrawDebugLine(GetWorld(), Start, End, FColor::Blue, false, 1, 0, 1);
 
 	AActor* HitActor = HitResult.GetActor();
 	if (HitActor == nullptr) return;
@@ -230,9 +223,6 @@ void ATEST_CPPCharacter::TogglePushPull(const FInputActionValue& Value)
 
 	InteractedActor = Cast<AMovableActor>(HitActor);
 	if (InteractedActor == nullptr) return;
-
-	// Interaction with a pushable actor.
-	UE_LOG(LogTemp, Warning, TEXT("Intracting with pushable actor: %s"), *HitActor->GetName());
 
 	CurrentInteraction = EInteractionMode::Push;
 	PushDirection = -(HitResult.Normal);
