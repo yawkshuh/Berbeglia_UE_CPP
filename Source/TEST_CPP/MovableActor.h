@@ -50,6 +50,10 @@ private:
 public:
 	void BeginInteraction(const EInteractionMode Mode);
 	void EndInteraction();
+	void SetColorByInteraction(const EInteractionMode Interaction);
+
+	FORCEINLINE EInteractionMode GetInteractionMode() const { return InteractionMode; }
+	FORCEINLINE void SetInteractionMode(const EInteractionMode Mode) { InteractionMode = Mode; }
 
 	FORCEINLINE UBoxComponent* GetBoxComponent() const { return BoxComponent; }
 	FORCEINLINE UStaticMeshComponent* GetMeshComponent() const { return MeshComponent; }

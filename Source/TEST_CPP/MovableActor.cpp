@@ -78,7 +78,8 @@ void AMovableActor::BeginInteraction(const EInteractionMode Mode)
 
 		default:
 		{
-			
+			InteractionMode = EInteractionMode::None;
+			UFunctionLibrary::SetDynamicMaterialInstanceParameter(MaterialInstance, "BaseColor", IdleColor);
 		} break;
 	}
 }
@@ -94,7 +95,7 @@ void AMovableActor::EndInteraction()
 		{
 			EnablePhysics();
 			Player->GetCharacterMovement()->SetJumpAllowed(true);
-			UFunctionLibrary::SetDynamicMaterialInstanceParameter(MaterialInstance, "BaseColor", TelekinesisColor);
+			SetColorByInteraction(InteractionMode);
 			InteractionMode = EInteractionMode::None;
 		} break;
 
@@ -103,13 +104,34 @@ void AMovableActor::EndInteraction()
 			EnablePhysics();
 			Player->GetCharacterMovement()->bOrientRotationToMovement = true;
 			Player->GetCharacterMovement()->SetJumpAllowed(true);
-			UFunctionLibrary::SetDynamicMaterialInstanceParameter(MaterialInstance, "BaseColor", PushColor);
+			SetColorByInteraction(InteractionMode);
 			InteractionMode = EInteractionMode::None;
 		} break;
 
 		default:
 		{
-			
+			SetColorByInteraction(InteractionMode);
+		} break;
+	}
+}
+
+void AMovableActor::SetColorByInteraction(const EInteractionMode Interaction)
+{
+	switch (Interaction)
+	{
+		case EInteractionMode::Telekinesis:
+		{
+			UFunctionLibrary::SetDynamicMaterialInstanceParameter(MaterialInstance, "BaseColor", TelekinesisColor);
+		} break;
+
+		case EInteractionMode::Push:
+		{
+			UFunctionLibrary::SetDynamicMaterialInstanceParameter(MaterialInstance, "BaseColor", PushColor);
+		} break;
+
+		default:
+		{
+			UFunctionLibrary::SetDynamicMaterialInstanceParameter(MaterialInstance, "BaseColor", IdleColor);
 		} break;
 	}
 }
